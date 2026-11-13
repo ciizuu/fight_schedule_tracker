@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fight Weekend</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Layout idea: a fight-night bill. One column of weekends; each event is a row with
+   the bell time on the left, the bout in the middle, the channel on the right. */
+:root {
+  --bg: #eceef1;
+  --surface: #ffffff;
+  --ink: #14171c;
+  --muted: #5b6370;
+  --line: #d5d9df;
+  --accent: #c4122f;       /* boxing red, also the page accent */
+  --ufc: #1f4fa8;          /* UFC blue */
+  --warn-bg: #fff1cc;
+  --warn-ink: #6b4a00;
+  --live: #0d8a4a;
+  --tag-bg: 70% 91%;       /* saturation + lightness for tag pills; hue comes from the tag name */
+  --tag-ink: 60% 26%;
+  --font-display: "Barlow Condensed", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1216;
+    --surface: #181c22;
+    --ink: #eef0f3;
+    --muted: #9aa3b0;
+    --line: #2b313a;
+    --accent: #ff4d67;
+    --ufc: #6f9cf0;
+    --warn-bg: #3a2f10;
+    --warn-ink: #f3d68a;
+    --live: #3fd08a;
+    --tag-bg: 35% 24%;
+    --tag-ink: 75% 84%;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1216;
+  --surface: #181c22;
+  --ink: #eef0f3;
+  --muted: #9aa3b0;
+  --line: #2b313a;
+  --accent: #ff4d67;
+  --ufc: #6f9cf0;
+  --warn-bg: #3a2f10;
+  --warn-ink: #f3d68a;
+  --live: #3fd08a;
+  --tag-bg: 35% 24%;
+  --tag-ink: 75% 84%;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.45;
+}
+.wrap { max-width: 900px; margin: 0 auto; padding: 28px 16px 56px; display: flex; flex-direction: column; gap: 22px; }
+
+header.top { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 24px; border-bottom: 3px solid var(--ink); padding-bottom: 14px; }
+h1 { font-family: var(--font-display); font-weight: 700; font-size: 52px; line-height: .95; letter-spacing: .01em; text-transform: uppercase; margin: 0; }
+h1 span { color: var(--accent); }
+.tagline { margin: 6px 0 0; color: var(--muted); font-size: 15px; }
+
+.controls { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; justify-content: space-between; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--surface); }
+.seg button { font: 600 14px var(--font-body); color: var(--muted); background: none; border: 0; padding: 8px 16px; cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+.right-controls { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; font-size: 14px; color: var(--muted); }
+.right-controls label { display: inline-flex; align-items: center; gap: 6px; }
+select { font: 500 14px var(--font-body); color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 7px 8px; max-width: 100%; }
+button:focus-visible, select:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.next { background: var(--ink); color: var(--bg); border-radius: 10px; padding: 16px 18px; display: flex; flex-wrap: wrap; gap: 6px 20px; align-items: baseline; justify-content: space-between; }
+.next .lbl { font: 600 12px var(--font-body); letter-spacing: .1em; text-transform: uppercase; opacity: .7; display: block; }
+.next .name { font-family: var(--font-display); font-weight: 700; font-size: 28px; line-height: 1.05; text-transform: uppercase; }
+.next .count { font-family: var(--font-display); font-weight: 600; font-size: 26px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+section.wk { display: flex; flex-direction: column; gap: 10px; }
+.wk-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.wk-head h2 { font-family: var(--font-display); font-weight: 700; font-size: 30px; text-transform: uppercase; margin: 0; line-height: 1; }
+.wk-head .range { color: var(--muted); font-size: 15px; }
+.wk-head .n { margin-left: auto; color: var(--muted); font-size: 14px; }
+.day { font: 600 13px var(--font-body); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 8px 0 0; }
+
+.ev { background: var(--surface); border: 1px solid var(--line); border-left: 5px solid var(--accent); border-radius: 8px; padding: 14px 16px; display: grid; grid-template-columns: 112px minmax(0, 1fr) minmax(120px, 170px); gap: 6px 18px; align-items: start; }
+.ev[data-sport="ufc"] { border-left-color: var(--ufc); }
+.ev-time .t { font-family: var(--font-display); font-weight: 700; font-size: 30px; line-height: 1; font-variant-numeric: tabular-nums; display: block; white-space: nowrap; }
+.ev-time .tl { font-size: 13px; color: var(--muted); display: block; margin-top: 3px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 4px; }
+.chip { font: 600 11px var(--font-body); letter-spacing: .08em; text-transform: uppercase; padding: 2px 7px; border-radius: 4px; color: var(--surface); background: var(--accent); }
+.chip.ufc { background: var(--ufc); }
+.chip.flag { background: var(--warn-bg); color: var(--warn-ink); }
+.chip.live { background: var(--live); }
+.chip.mid { background: none; color: var(--muted); border: 1px solid var(--line); }
+.ev h3 { font-family: var(--font-display); font-weight: 700; font-size: 24px; line-height: 1.08; margin: 0; text-wrap: balance; }
+.ev .bout, .ev .venue, .ev .note { margin: 3px 0 0; font-size: 14.5px; }
+.ev .venue, .ev .note { color: var(--muted); }
+.segs { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 14px; font-variant-numeric: tabular-nums; }
+.segs b { font-weight: 600; }
+.segs span { color: var(--muted); }
+.ev-watch .lbl { font: 600 11px var(--font-body); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); display: block; margin-bottom: 4px; }
+.ev-watch ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+.ev-watch a { color: var(--ink); font-weight: 600; text-decoration: underline; text-decoration-color: var(--accent); text-underline-offset: 3px; }
+.ev-watch a:hover { color: var(--accent); }
+.ev-watch small { display: block; color: var(--muted); font-size: 13px; }
+.tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+.tag { font: 500 12.5px var(--font-body); padding: 2px 9px; border-radius: 999px; white-space: nowrap; background: hsl(var(--h) var(--tag-bg)); color: hsl(var(--h) var(--tag-ink)); }
+.ev.has-fights { cursor: pointer; }
+.more { grid-column: 1 / -1; justify-self: start; margin-top: 6px; font: 600 13.5px var(--font-body); color: var(--ink); background: none; border: 1px solid var(--line); border-radius: 6px; padding: 6px 11px; cursor: pointer; }
+.more:hover { border-color: var(--ink); }
+.fights { grid-column: 1 / -1; border-top: 1px solid var(--line); margin-top: 4px; padding-top: 12px; display: flex; flex-direction: column; gap: 12px; cursor: default; }
+.fights h4 { font: 600 12px var(--font-body); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin: 0 0 6px; }
+.fights ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 7px; }
+.fights li { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; font-size: 15px; }
+.fights li b { font-weight: 600; }
+.fights li .d { color: var(--muted); font-size: 14px; }
+.empty { background: var(--surface); border: 1px dashed var(--line); border-radius: 8px; padding: 22px; color: var(--muted); text-align: center; }
+
+footer { color: var(--muted); font-size: 13.5px; border-top: 1px solid var(--line); padding-top: 14px; }
+footer p { margin: 0 0 6px; max-width: 70ch; }
+#problems { color: var(--warn-ink); background: var(--warn-bg); padding: 8px 10px; border-radius: 6px; }
+footer a { color: inherit; }
+
+@media (max-width: 640px) {
+  h1 { font-size: 40px; }
+  .ev { grid-template-columns: 1fr; }
+  .ev-time { display: flex; align-items: baseline; gap: 8px; }
+  .ev-time .tl { margin: 0; }
+  .ev-watch ul { flex-direction: row; flex-wrap: wrap; gap: 4px 14px; }
+  .wk-head .n { margin-left: 0; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Fight <span>Weekend</span></h1>
+      <p class="tagline">Every boxing and UFC card, when it starts where you are, and what to open to watch it.</p>
+    </div>
+  </header>
+
+  <div class="controls">
+    <div class="seg" role="group" aria-label="Filter by sport">
+      <button type="button" id="f-all" data-filter="all" aria-pressed="true">All</button>
+      <button type="button" id="f-boxing" data-filter="boxing" aria-pressed="false">Boxing</button>
+      <button type="button" id="f-ufc" data-filter="ufc" aria-pressed="false">UFC</button>
+    </div>
+    <div class="right-controls">
+      <label for="tz">Times in
+        <select id="tz"></select>
+      </label>
+      <label for="tag" id="tag-wrap" hidden>Tag
+        <select id="tag"></select>
+      </label>
+      <label for="past"><input type="checkbox" id="past"> Show finished</label>
+    </div>
+  </div>
+
+  <div class="next" id="next" hidden></div>
+  <main id="list"></main>
+
+  <footer>
+    <p id="status">Loading the schedule…</p>
+    <p id="problems" hidden></p>
+    <p>Cards, times and broadcasters change, boxing especially. A yellow tag means the time isn't confirmed. Where to watch is for viewers in the United States.</p>
+  </footer>
+</div>
+
+<script type="text/plain" id="sample">
+card,section,sport,title,details,tags,venue,date,label_1,time_1_et,label_2,time_2_et,label_3,time_3_et,watch,watch_note,flag,note
+,,Boxing,Viddal Riley vs. Seydi Coupe,European cruiserweight title,,"London, England",2026-11-14,Card starts,2:00 PM,,,,,DAZN,,,
+,,Boxing,Zuffa Boxing 13: Adames vs. Warburton,"Carlos Adames vs. Gerome Warburton, super middleweight",,"The Venue, Riyadh, Saudi Arabia",2026-11-14,,,,,,,Paramount+,,Time not confirmed,No start time published that I could confirm. Check Paramount+ on the day.
+,,UFC,UFC 334: Gane vs. Hokit,"Ciryl Gane vs. Josh Hokit, heavyweight title",,"Madison Square Garden, New York",2026-11-14,Early prelims,5:00 PM,Prelims,7:00 PM,Main card,9:00 PM,Paramount+,,,
+UFC 334,Main card,,Ciryl Gane vs. Josh Hokit,Heavyweight title,Title fight,,,,,,,,,,,,
+UFC 334,Main card,,Kayla Harrison vs. Amanda Nunes,Women's bantamweight title,Title fight,,,,,,,,,,,,
+UFC 334,Main card,,Caio Borralho vs. Yousri Belgaroui,Middleweight,,,,,,,,,,,,,
+UFC 334,Main card,,Uros Medic vs. Kevin Holland,Welterweight,,,,,,,,,,,,,
+UFC 334,Main card,,Bilal Hasan vs. Luis Gurule,Flyweight,,,,,,,,,,,,,
+UFC 334,Prelims,,Stephen Thompson vs. Charles Radtke,Welterweight,,,,,,,,,,,,,
+UFC 334,Prelims,,Drew Dober vs. Chris Duncan,Lightweight,,,,,,,,,,,,,
+UFC 334,Prelims,,Jim Miller vs. Terrance McKinney,Lightweight,,,,,,,,,,,,,
+UFC 334,Prelims,,Donte Johnson vs. Cesar Almeida,Middleweight,,,,,,,,,,,,,
+UFC 334,Early prelims,,Jared Gordon vs. Melquizael Costa,Lightweight,,,,,,,,,,,,,
+UFC 334,Early prelims,,Macy Chiasson vs. Bia Mesquita,Women's bantamweight,,,,,,,,,,,,,
+UFC 334,Early prelims,,Alatengheili vs. Juan Diaz,Bantamweight,,,,,,,,,,,,,
+UFC 334,Early prelims,,Evan Elder vs. Samuel Sanches,Lightweight,,,,,,,,,,,,,
+,,Boxing,Diego Pacheco vs. Darius Fulghum,Super middleweight,,"Dignity Health Sports Park, Carson, California",2026-11-14,Card starts,7:30 PM,Main event (est.),11:00 PM,,,"DAZN, TNT / truTV",,,
+,,Boxing,Teremoana Teremoana vs. Hemi Ahio,,,"Melbourne, Australia",2026-11-18,Card starts,4:00 AM,,,,,DAZN,,,
+,,Boxing,Lauren Price vs. Michaela Kotaskova,"WBC, WBA and IBF welterweight titles",,"Utilita Arena, Cardiff, Wales",2026-11-20,,,,,,,BBC Two (UK),No US broadcaster found,Time not confirmed,
+,,Boxing,Amari Jones vs. DeAundre Pettus,,,,2026-11-20,Card starts,8:00 PM,Main event (est.),11:00 PM,,,DAZN,,,
+,,UFC,UFC Fight Night: Procházka vs. Stirling,Jiří Procházka vs. Navajo Stirling,,"ABHA Arena, Doha, Qatar",2026-11-21,Prelims,10:00 AM,Main card,1:00 PM,,,Paramount+,,Time not confirmed,Most listings say 1 PM ET for the main card; Paramount+'s own schedule page says 5 PM ET.
+,,Boxing,Andy Cruz vs. Artur Subkhankulov,,,"Wrestling Palace, Ufa, Russia",2026-11-27,,,,,,,YouTube,,Time not confirmed,
+,,Boxing,Agit Kabayel vs. Nelson Hysa,WBC heavyweight title,,"Düsseldorf, Germany",2026-11-28,Card starts,1:00 PM,,,,,DAZN,,,
+,,Boxing,Adam Azim vs. Gabriel Gollaz Valenzuela,Light welterweight,,"Copper Box Arena, London, England",2026-12-04,Card starts,2:00 PM,,,,,DAZN,,,
+,,UFC,UFC Fight Night: Adesanya vs. Magomedov,"Israel Adesanya vs. Sharabutdin Magomedov, middleweight",,"The Venue, Riyadh, Saudi Arabia",2026-12-05,Prelims,10:00 AM,Main card,1:00 PM,,,Paramount+,,,
+,,Boxing,Conah Walker vs. Alexis Rocha,Welterweight,,"Wolverhampton, England",2026-12-05,Card starts,2:00 PM,,,,,DAZN,,,
+,,Boxing,David Benavidez vs. Michał Cieślak,"WBA, WBO and WBC cruiserweight titles",,"Desert Diamond Arena, Glendale, Arizona",2026-12-05,Card starts,8:00 PM,,,,,DAZN,,,
+,,Boxing,Megan Redstall vs. Lauryne Brankaer,,,,2026-12-06,Card starts,12:00 PM,,,,,DAZN,,,
+,,Boxing,Tyson Fury vs. Anthony Joshua,Heavyweight,,"Principality Stadium, Cardiff, Wales",2026-12-11,,,,,,,Netflix,,Time not confirmed,Start time has not been announced.
+,,Boxing,Erislandy Lara vs. Tim Tszyu,WBA middleweight title,,"Cbus Super Stadium, Gold Coast, Australia",2026-12-12,Card starts,4:00 AM,,,,,DAZN,,Time not confirmed,DAZN lists 4 AM ET Saturday; BoxingScene lists 6:30 PM ET Saturday.
+,,Boxing,Dmitry Bivol vs. Callum Smith,Light heavyweight titles,,"Yekaterinburg, Russia",2026-12-12,Card starts,9:00 AM,,,,,DAZN,,,
+,,Boxing,Michel Soro vs. George Liddard,Middleweight,,"Monte Carlo, Monaco",2026-12-12,Card starts,2:00 PM,,,,,DAZN,,,
+,,UFC,UFC 335: Oliveira vs. Lopes,"Charles Oliveira vs. Diego Lopes, BMF title",,"T-Mobile Arena, Las Vegas",2026-12-12,Early prelims,5:00 PM,Prelims,7:00 PM,Main card,9:00 PM,Paramount+,,,
+,,Boxing,Anthony Cacace vs. Nick Ball,,,"The O2, Belfast, Northern Ireland",2026-12-19,,,,,,,DAZN,,Time not confirmed,
+,,Boxing,Devin Haney vs. Liam Paro,,,"Chase Center, San Francisco",2026-12-19,Card starts,8:00 PM,,,,,DAZN,,,
+,,Boxing,Jake Paul vs. Cédric Doumbé,,,"Coca-Cola Arena, Dubai, UAE",2026-12-24,Card starts,9:00 AM,,,,,Broadcaster not announced,,,
+</script>
+<script>
+/* ============================================================
+   SETUP — the only line you ever need to change in this file.
+   Paste your Google Sheet's "Publish to web" CSV link between the quotes.
+   While it is empty, the page shows the sample schedule stored at the bottom of this file.
+   ============================================================ */
+const SHEET_CSV_URL = "";
+
+/* Broadcaster names the page turns into links. In the sheet's "watch" column, write names
+   separated by commas. For one that isn't listed here, either add it below or write it in
+   the sheet as:  Name | https://link  */
+const BROADCASTERS = {
+  "paramount+": "https://www.paramountplus.com/",
+  "dazn": "https://www.dazn.com/",
+  "netflix": "https://www.netflix.com/",
+  "tnt": "https://www.tntdrama.com/",
+  "tnt / trutv": "https://www.tntdrama.com/",
+  "youtube": "https://www.youtube.com/",
+  "espn+": "https://plus.espn.com/",
+  "prime video": "https://www.primevideo.com/",
+  "peacock": "https://www.peacocktv.com/",
+  "bbc two (uk)": "https://www.bbc.co.uk/iplayer"
+};
+
+/* ============================================================
+   SHEET READING
+   ============================================================ */
+const ET = "America/New_York";
+
+function parseCSV(text) {
+  const rows = []; let row = [], cell = "", q = false;
+  if (text.charCodeAt(0) === 65279) text = text.slice(1);   // strip the byte-order mark some exports add
+  text = text.replace(/^\s+/, "");
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) {
+      if (c === '"') { if (text[i + 1] === '"') { cell += '"'; i++; } else q = false; }
+      else cell += c;
+    } else if (c === '"') q = true;
+    else if (c === ",") { row.push(cell); cell = ""; }
+    else if (c === "\n" || c === "\r") {
+      if (c === "\r" && text[i + 1] === "\n") i++;
+      row.push(cell); rows.push(row); row = []; cell = "";
+    } else cell += c;
+  }
+  if (cell !== "" || row.length) { row.push(cell); rows.push(row); }
+  return rows;
+}
+
+// "2026-11-14" or "11/14/2026" -> [y, m, d]
+function parseDate(s) {
+  s = String(s || "").trim();
+  let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (m) return [+m[1], +m[2], +m[3]];
+  m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (m) return [+m[3], +m[1], +m[2]];
+  return null;
+}
+// "9:00 PM", "9pm", "21:00", "9:00:00 PM" -> [h, m]; blank or "TBA" -> null
+function parseTime(s) {
+  s = String(s || "").trim().toLowerCase();
+  const m = s.match(/^(\d{1,2})(?::(\d{2}))?(?::\d{2})?\s*(a|p)?\.?m?\.?$/);
+  if (!m) return null;
+  let h = +m[1]; const mm = +(m[2] || 0);
+  if (m[3] === "p" && h < 12) h += 12;
+  if (m[3] === "a" && h === 12) h = 0;
+  if (h > 23 || mm > 59 || (!m[3] && !m[2])) return null;
+  return [h, mm];
+}
+// Clock time in US Eastern -> exact moment. Handles daylight saving on its own.
+function zoneOffset(ts, tz) {
+  const p = {};
+  new Intl.DateTimeFormat("en-US", { timeZone: tz, hourCycle: "h23", year: "numeric", month: "numeric", day: "numeric", hour: "numeric", minute: "numeric", second: "numeric" })
+    .formatToParts(new Date(ts)).forEach(x => { p[x.type] = +x.value; });
+  return Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second) - ts;
+}
+function easternToDate(y, mo, d, h, mi) {
+  const wall = Date.UTC(y, mo - 1, d, h, mi);
+  let t = wall - zoneOffset(wall, ET);
+  t = wall - zoneOffset(t, ET);
+  return new Date(t);
+}
+
+function parseTags(s) {
+  const seen = {}, out = [];
+  String(s || "").split(",").map(t => t.trim()).filter(Boolean).forEach(t => { const k = t.toLowerCase(); if (!seen[k]) { seen[k] = 1; out.push(t); } });
+  return out;
+}
+const norm = s => String(s || "").trim().toLowerCase();
+
+// Sheet rows -> events. Returns { events, problems } so bad rows are reported, not silently lost.
+function rowsToEvents(rows) {
+  const events = [], problems = [], fightRows = [];
+  if (!rows.length) return { events, problems: ["The sheet is empty."] };
+  const head = rows[0].map(h => h.toLowerCase().replace(/[^a-z0-9]/g, ""));
+  const col = name => head.indexOf(name);
+  ["sport", "title", "date"].forEach(n => { if (col(n) < 0) problems.push('The sheet has no "' + n + '" column in row 1.'); });
+  if (problems.length) return { events, problems };
+  rows.slice(1).forEach((r, i) => {
+    const get = name => { const c = col(name); return c < 0 ? "" : String(r[c] || "").trim(); };
+    const title = get("title");
+    const n = i + 2;
+    if (get("card")) {                                        // a single fight on someone's card
+      if (!title) problems.push("Row " + n + " skipped: it names a card but has no fight in the title column.");
+      else fightRows.push({ n, card: get("card"), title, details: get("details"), section: get("section"), tags: parseTags(get("tags")) });
+      return;
+    }
+    if (!title && !get("date")) return;                       // blank row
+    const ymd = parseDate(get("date"));
+    if (!title) { problems.push("Row " + n + " skipped: no title."); return; }
+    if (!ymd) { problems.push("Row " + n + " (" + title + ") skipped: write the date as 2026-12-31 or 12/31/2026."); return; }
+    const segments = []; let prev = null, dayShift = 0;
+    for (let k = 1; k <= 3; k++) {
+      const raw = get("time" + k + "et") || get("time" + k);
+      if (!raw || /^tba$/i.test(raw)) continue;
+      const hm = parseTime(raw);
+      if (!hm) { problems.push("Row " + n + " (" + title + "): couldn't read the time \"" + raw + "\". Write it like 9:00 PM."); continue; }
+      const mins = hm[0] * 60 + hm[1];
+      if (prev !== null && mins < prev) dayShift++;            // e.g. main event after midnight
+      prev = mins;
+      segments.push({ label: get("label" + k) || (segments.length ? "Main event" : "Card starts"), at: easternToDate(ymd[0], ymd[1], ymd[2] + dayShift, hm[0], hm[1]) });
+    }
+    const wnote = get("watchnote");
+    const watch = get("watch").split(",").map(s => s.trim()).filter(Boolean).map((w, j) => {
+      const parts = w.split("|").map(s => s.trim());
+      const url = /^https?:\/\//.test(parts[1] || "") ? parts[1] : (BROADCASTERS[parts[0].toLowerCase()] || "");
+      return { name: parts[0], url, note: j === 0 ? wnote : "" };
+    });
+    if (!watch.length) watch.push({ name: "Not announced", url: "", note: wnote });
+    events.push({
+      sport: /ufc|mma/i.test(get("sport")) ? "ufc" : "boxing",
+      title, bout: get("details"), venue: get("venue"),
+      date: ymd[0] + "-" + String(ymd[1]).padStart(2, "0") + "-" + String(ymd[2]).padStart(2, "0"),
+      segments, watch, flag: get("flag"), note: get("note"),
+      tags: parseTags(get("tags")), fights: []
+    });
+  });
+  // Hang each fight on its card: exact title first, otherwise the one card whose title starts with it ("UFC 334").
+  fightRows.forEach(f => {
+    const want = norm(f.card);
+    let hits = events.filter(e => norm(e.title) === want);
+    if (!hits.length) hits = events.filter(e => norm(e.title).indexOf(want) === 0);
+    if (hits.length === 1) hits[0].fights.push(f);
+    else problems.push("Row " + f.n + " (" + f.title + "): " + (hits.length ? "more than one card starts with" : "no card is called") + " \"" + f.card + "\".");
+  });
+  events.forEach(e => {
+    e.id = e.date + "|" + e.title;
+    e.allTags = parseTags(e.tags.concat.apply(e.tags, e.fights.map(f => f.tags)).join(","));
+  });
+  return { events, problems };
+}
+
+let EVENTS = [];
+
+/* ============================================================
+   LOGIC
+   ============================================================ */
+const DAY_MS = 86400000;
+const WD = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+function localZone() {
+  try { return Intl.DateTimeFormat().resolvedOptions().timeZone || "America/New_York"; }
+  catch (e) { return "America/New_York"; }
+}
+
+// Calendar date of an instant in a time zone, as a UTC-midnight Date (a "plain day").
+function dayIn(date, tz) {
+  const p = {};
+  new Intl.DateTimeFormat("en-US", { timeZone: tz, year: "numeric", month: "numeric", day: "numeric" })
+    .formatToParts(date).forEach(x => { p[x.type] = x.value; });
+  return new Date(Date.UTC(+p.year, +p.month - 1, +p.day));
+}
+function plainDay(str) { const a = str.split("-"); return new Date(Date.UTC(+a[0], +a[1] - 1, +a[2])); }
+function monIndex(day) { return (day.getUTCDay() + 6) % 7; }            // Mon=0 … Sun=6
+function fridayOf(day) { return new Date(day.getTime() + (4 - monIndex(day)) * DAY_MS); }
+function fmtDay(day, opts) { return new Intl.DateTimeFormat("en-US", Object.assign({ timeZone: "UTC" }, opts)).format(day); }
+function fmtTime(date, tz) { return new Intl.DateTimeFormat("en-US", { timeZone: tz, hour: "numeric", minute: "2-digit" }).format(date); }
+
+// Turn a raw event into something the page can sort, group and draw.
+function prepare(ev, tz) {
+  const segs = (ev.segments || []).map(s => ({ label: s.label, at: new Date(s.at) })).sort((a, b) => a.at - b.at);
+  const timed = segs.length > 0;
+  const day = timed ? dayIn(segs[0].at, tz) : plainDay(ev.date);
+  const start = timed ? segs[0].at : new Date(day.getTime() + 17 * 3600000); // untimed: sorts mid-day, counts as over next morning
+  const end = timed ? new Date(segs[segs.length - 1].at.getTime() + 4 * 3600000) : new Date(day.getTime() + 36 * 3600000);
+  return Object.assign({}, ev, { segs, timed, day, start, end, friday: fridayOf(day), midweek: monIndex(day) < 4 });
+}
+
+function buildGroups(events, tz, now, filter, showPast, tag) {
+  const today = dayIn(now, tz);
+  const thisFri = fridayOf(today).getTime();
+  const list = events.map(e => prepare(e, tz))
+    .filter(e => filter === "all" || e.sport === filter)
+    .filter(e => showPast || e.end > now)
+    .filter(e => !tag || e.allTags.some(t => norm(t) === norm(tag)))
+    .sort((a, b) => a.day - b.day || (b.timed - a.timed) || a.start - b.start);   // by day, timed cards first, then by bell time
+  const groups = [];
+  list.forEach(e => {
+    const key = e.friday.getTime();
+    let g = groups.find(x => x.key === key);
+    if (!g) {
+      const weeks = Math.round((key - thisFri) / (7 * DAY_MS));
+      g = { key, friday: e.friday, events: [],
+            name: weeks === 0 ? "This weekend" : weeks === 1 ? "Next weekend" : weeks === -1 ? "Last weekend" : "Weekend of " + fmtDay(e.friday, { month: "short", day: "numeric" }) };
+      groups.push(g);
+    }
+    g.events.push(e);
+  });
+  groups.sort((a, b) => a.key - b.key);
+  return groups;
+}
+
+function rangeLabel(friday) {
+  const sun = new Date(friday.getTime() + 2 * DAY_MS);
+  const a = fmtDay(friday, { month: "short", day: "numeric" });
+  const b = friday.getUTCMonth() === sun.getUTCMonth() ? fmtDay(sun, { day: "numeric" }) : fmtDay(sun, { month: "short", day: "numeric" });
+  return "Fri " + a + " – Sun " + b;
+}
+
+function countdown(ms) {
+  const m = Math.max(0, Math.floor(ms / 60000));
+  const d = Math.floor(m / 1440), h = Math.floor((m % 1440) / 60), mm = m % 60;
+  return (d ? d + "d " : "") + (d || h ? h + "h " : "") + mm + "m";
+}
+
+/* ============================================================
+   PAGE
+   ============================================================ */
+if (typeof document !== "undefined") (function () {
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem("fw-" + k); return v === null ? d : v; } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem("fw-" + k, v); } catch (e) {} }
+  };
+  const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const here = localZone();
+  const ZONES = [
+    [here, "My time (" + here.replace(/_/g, " ") + ")"],
+    ["America/New_York", "US Eastern"], ["America/Chicago", "US Central"],
+    ["America/Denver", "US Mountain"], ["America/Los_Angeles", "US Pacific"], ["Europe/London", "UK"]
+  ];
+  const state = { filter: store.get("filter", "all"), tz: store.get("tz", here), past: store.get("past", "0") === "1", tag: store.get("tag", "") };
+  const open = new Set();   // cards currently expanded
+  const HUES = [212, 268, 328, 24, 152, 188];
+  const tagHTML = t => { let h = 0; for (const c of norm(t)) h = (h * 31 + c.charCodeAt(0)) >>> 0; return '<span class="tag" style="--h:' + HUES[h % HUES.length] + '">' + esc(t) + "</span>"; };
+
+  function fightsHTML(e) {
+    if (!e.fights.length) return "";
+    const isOpen = open.has(e.id);
+    let html = '<button type="button" class="more" aria-expanded="' + isOpen + '">' + (isOpen ? "Hide full card" : "Full card · " + e.fights.length + (e.fights.length === 1 ? " fight" : " fights")) + "</button>";
+    if (!isOpen) return html;
+    const sections = [];
+    e.fights.forEach(f => {
+      let s = sections.find(x => norm(x.name) === norm(f.section));
+      if (!s) { s = { name: f.section, fights: [] }; sections.push(s); }
+      s.fights.push(f);
+    });
+    html += '<div class="fights">' + sections.map(s => "<div>" + (s.name ? "<h4>" + esc(s.name) + "</h4>" : "") + "<ol>" +
+      s.fights.map(f => "<li><b>" + esc(f.title) + "</b>" + (f.details ? '<span class="d">' + esc(f.details) + "</span>" : "") + f.tags.map(tagHTML).join("") + "</li>").join("") +
+      "</ol></div>").join("") + "</div>";
+    return html;
+  }
+  if (!ZONES.some(z => z[0] === state.tz)) state.tz = here;
+
+  const tzSel = document.getElementById("tz");
+  tzSel.innerHTML = ZONES.map(z => '<option value="' + esc(z[0]) + '">' + esc(z[1]) + "</option>").join("");
+  tzSel.value = state.tz;
+  document.getElementById("past").checked = state.past;
+
+  function eventHTML(e, now) {
+    const live = e.timed && now >= e.start && now < e.end;
+    const first = e.segs[0];
+    const chips = ['<span class="chip ' + (e.sport === "ufc" ? "ufc" : "") + '">' + (e.sport === "ufc" ? "UFC" : "Boxing") + "</span>"];
+    if (live) chips.push('<span class="chip live">On now</span>');
+    if (e.midweek) chips.push('<span class="chip mid">Midweek</span>');
+    if (e.flag) chips.push('<span class="chip flag">' + esc(e.flag) + "</span>");
+    const dayKey = e.day.getTime();
+    const segItems = e.segs.length > 1 ? '<ul class="segs">' + e.segs.map(s => {
+      const other = dayIn(s.at, state.tz).getTime() !== dayKey ? " " + fmtDay(dayIn(s.at, state.tz), { weekday: "short" }) : "";
+      return "<li><span>" + esc(s.label) + "</span> <b>" + fmtTime(s.at, state.tz) + other + "</b></li>";
+    }).join("") + "</ul>" : "";
+    const watch = e.watch.map(w => "<li>" + (w.url ? '<a href="' + esc(w.url) + '" target="_blank" rel="noopener">' + esc(w.name) + "</a>" : "<span>" + esc(w.name) + "</span>") +
+      (w.note ? "<small>" + esc(w.note) + "</small>" : "") + "</li>").join("");
+    return '<article class="ev' + (e.fights.length ? " has-fights" : "") + '" data-sport="' + e.sport + '" data-id="' + esc(e.id) + '">' +
+      '<div class="ev-time"><span class="t">' + (e.timed ? fmtTime(first.at, state.tz) : "TBA") + '</span><span class="tl">' + (e.timed ? esc(first.label) : "Start time") + "</span></div>" +
+      '<div class="ev-body"><div class="chips">' + chips.join("") + "</div><h3>" + esc(e.title) + "</h3>" +
+      (e.bout ? '<p class="bout">' + esc(e.bout) + "</p>" : "") +
+      (e.venue ? '<p class="venue">' + esc(e.venue) + "</p>" : "") + segItems +
+      (e.note ? '<p class="note">' + esc(e.note) + "</p>" : "") +
+      (e.allTags.length ? '<div class="tags">' + e.allTags.map(tagHTML).join("") + "</div>" : "") + "</div>" +
+      '<div class="ev-watch"><span class="lbl">Watch on</span><ul>' + watch + "</ul></div>" + fightsHTML(e) + "</article>";
+  }
+
+  function renderNext(now) {
+    const box = document.getElementById("next");
+    const up = EVENTS.map(e => prepare(e, state.tz))
+      .filter(e => e.timed && e.end > now && (state.filter === "all" || e.sport === state.filter))
+      .sort((a, b) => a.start - b.start)[0];
+    if (!up) { box.hidden = true; return; }
+    const live = now >= up.start;
+    box.hidden = false;
+    box.innerHTML = '<div><span class="lbl">' + (live ? "On now" : "Next bell") + '</span><span class="name">' + esc(up.title) + "</span></div>" +
+      '<div class="count">' + (live ? "Live on " + esc(up.watch[0].name) : "Starts in " + countdown(up.start - now)) + "</div>";
+  }
+
+  function render() {
+    const now = new Date();
+    document.querySelectorAll("[data-filter]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.filter === state.filter)));
+    renderNext(now);
+    // Tag menu: every tag used anywhere in the sheet
+    const all = parseTags(EVENTS.map(e => e.allTags.join(",")).join(",")).sort((a, b) => a.localeCompare(b));
+    if (state.tag && !all.some(t => norm(t) === norm(state.tag))) state.tag = "";
+    const tagSel = document.getElementById("tag");
+    document.getElementById("tag-wrap").hidden = !all.length;
+    tagSel.innerHTML = '<option value="">Any</option>' + all.map(t => '<option value="' + esc(t) + '">' + esc(t) + "</option>").join("");
+    tagSel.value = all.find(t => norm(t) === norm(state.tag)) || "";
+    const groups = buildGroups(EVENTS, state.tz, now, state.filter, state.past, state.tag);
+    const list = document.getElementById("list");
+    if (!groups.length) { list.innerHTML = '<p class="empty">Nothing on the schedule for this filter. Try All, or tick Show finished.</p>'; return; }
+    list.innerHTML = groups.map(g => {
+      let lastDay = null, body = "";
+      g.events.forEach(e => {
+        if (e.day.getTime() !== lastDay) {
+          lastDay = e.day.getTime();
+          body += '<p class="day">' + fmtDay(e.day, { weekday: "long", month: "short", day: "numeric" }) + "</p>";
+        }
+        body += eventHTML(e, now);
+      });
+      return '<section class="wk"><div class="wk-head"><h2>' + esc(g.name) + '</h2><span class="range">' + rangeLabel(g.friday) +
+        '</span><span class="n">' + g.events.length + (g.events.length === 1 ? " card" : " cards") + "</span></div>" + body + "</section>";
+    }).join("");
+    list.style.display = "flex"; list.style.flexDirection = "column"; list.style.gap = "26px";
+  }
+
+  document.querySelectorAll("[data-filter]").forEach(b => b.addEventListener("click", () => { state.filter = b.dataset.filter; store.set("filter", state.filter); render(); }));
+  document.getElementById("tag").addEventListener("change", ev => { state.tag = ev.target.value; store.set("tag", state.tag); render(); });
+  // Click a card (or its button) to open the full fight list
+  document.getElementById("list").addEventListener("click", ev => {
+    const card = ev.target.closest(".ev.has-fights");
+    if (!card || ev.target.closest("a") || (ev.target.closest(".fights"))) return;
+    const id = card.dataset.id;
+    if (open.has(id)) open.delete(id); else open.add(id);
+    render();
+    const again = Array.from(document.querySelectorAll(".ev.has-fights")).find(x => x.dataset.id === id);
+    if (again) again.querySelector(".more").focus();
+  });
+  tzSel.addEventListener("change", () => { state.tz = tzSel.value; store.set("tz", state.tz); render(); });
+  document.getElementById("past").addEventListener("change", ev => { state.past = ev.target.checked; store.set("past", state.past ? "1" : "0"); render(); });
+
+  // ---- Load the schedule: Google Sheet -> last copy saved in this browser -> sample at the bottom of this file ----
+  function use(csv, message) {
+    const out = rowsToEvents(parseCSV(csv));
+    EVENTS = out.events;
+    document.getElementById("status").textContent = message;
+    const pr = document.getElementById("problems");
+    pr.hidden = !out.problems.length;
+    pr.textContent = out.problems.length ? "Check the sheet: " + out.problems.join(" ") : "";
+    render();
+  }
+  const sample = document.getElementById("sample").textContent.trim();
+  async function load() {
+    if (!SHEET_CSV_URL) { use(sample, "Showing the sample schedule. To use your own Google Sheet, paste its published CSV link into SHEET_CSV_URL at the top of this file's script."); return; }
+    try {
+      const res = await fetch(SHEET_CSV_URL + (SHEET_CSV_URL.includes("?") ? "&" : "?") + "t=" + Date.now(), { cache: "no-store" });
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const csv = await res.text();
+      if (/^\s*</.test(csv)) throw new Error("That link returned a web page, not CSV");
+      store.set("csv", csv);
+      use(csv, "Schedule loaded from the Google Sheet at " + fmtTime(new Date(), here) + ".");
+    } catch (err) {
+      const saved = store.get("csv", "");
+      if (saved) use(saved, "Couldn't reach the Google Sheet (" + err.message + "). Showing the last copy this browser saved.");
+      else use(sample, "Couldn't reach the Google Sheet (" + err.message + "). Showing the sample schedule instead. Check that the sheet is published to the web as CSV.");
+    }
+  }
+  load();
+  setInterval(() => renderNext(new Date()), 30000);   // keep the countdown ticking
+  setInterval(load, 5 * 60000);      // re-read the sheet every 5 minutes
+})();
+
+if (typeof module !== "undefined") module.exports = { parseCSV, rowsToEvents, buildGroups, fmtTime, rangeLabel };
+</script>
+</body>
+</html>
